@@ -7,9 +7,13 @@
     "dev": "astro dev",
     "fetch-data": "node scripts/fetch-github.mjs",
     "build": "astro build",
-    "preview": "astro preview"
+    "preview": "astro preview",
+    "make-icons": "node scripts/make-icons.mjs"
   },
   "dependencies": {
     "astro": "7.4.7"
+  },
+  "devDependencies": {
+    "sharp": "0.35.5"
   }
 }
