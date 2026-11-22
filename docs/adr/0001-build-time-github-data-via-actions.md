@@ -12,7 +12,7 @@ GitHub Pages site, so the browser cannot call that API without leaking a token.
 
 A scheduled GitHub Actions workflow fetches the data with the workflow token,
 builds the site with Astro, and deploys it with the Pages "GitHub Actions"
-source. It runs on push to `development`, nightly, and on demand. A Snapshot is
+source. It runs on push to `development`, weekly, and on demand. A Snapshot is
 also committed so local builds work offline or without a token.
 
 `development` is the default branch (scheduled workflows only run from the
@@ -28,5 +28,5 @@ default branch); the old `master` branch of hand-pushed build output is retired.
 
 ## Consequences
 
-Data on the page is up to one day old. Pages settings must use the Actions
+Data on the page is up to one week old (or newer after any push or manual run). Pages settings must use the Actions
 source; the repo can no longer be deployed by pushing to `master`.

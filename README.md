@@ -11,7 +11,7 @@ timeline covering every year since 2012. Built with [Astro](https://astro.build)
 - `src/data/site.ts` holds the hand-written parts: intro text, links, and
   optional per-project description overrides.
 - `.github/workflows/deploy.yml` fetches, builds and deploys to GitHub Pages on
-  every push to `development`, nightly, and on demand.
+  every push to `development`, weekly, and on demand.
 
 ## Develop
 

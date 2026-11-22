@@ -4,9 +4,9 @@ on:
   push:
     branches: [development]
   schedule:
-    # Nightly refresh of pinned projects and contributions.
+    # Weekly refresh of pinned projects and contributions (Mondays 03:17 UTC).
     # Scheduled runs only fire from the repository's default branch.
-    - cron: '17 3 * * *'
+    - cron: '17 3 * * 1'
   workflow_dispatch:
 
 permissions:
