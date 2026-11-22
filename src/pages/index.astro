@@ -1,0 +1,202 @@
+---
+import github from '../data/github.json';
+import { intro, links, projectOverrides } from '../data/site';
+import ProjectCard from '../components/ProjectCard.astro';
+import ContributionTimeline from '../components/ContributionTimeline.astro';
+
+const { profile, pinned, contributions } = github;
+const projects = pinned.map((p) => ({ ...p, ...projectOverrides[p.name] }));
+const name = profile.name ?? profile.login;
+const description = `${name}'s projects and GitHub contribution history.`;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{name} · Projects</title>
+    <meta name="description" content={description} />
+    <meta name="color-scheme" content="dark light" />
+    <link rel="icon" href="/favicon.ico" />
+    <meta property="og:title" content={`${name} · Projects`} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content={profile.avatarUrl} />
+    <script is:inline>
+      // Retire the old Create React App service worker for returning visitors.
+      navigator.serviceWorker?.getRegistrations().then((regs) => regs.forEach((r) => r.unregister()));
+    </script>
+  </head>
+  <body>
+    <main>
+      <header class="intro">
+        <img src={profile.avatarUrl} alt={`Portrait of ${name}`} width="128" height="128" />
+        <div>
+          <h1>{name}</h1>
+          <p class="headline">{intro.headline}</p>
+          {intro.body.map((p) => <p>{p}</p>)}
+          <ul class="links">
+            {links.map((l) => <li><a href={l.href}>{l.label}</a></li>)}
+            {profile.location && <li class="loc">{profile.location}</li>}
+          </ul>
+        </div>
+      </header>
+
+      <section aria-labelledby="pinned-heading">
+        <h2 id="pinned-heading">Pinned projects</h2>
+        <div class="projects">
+          {projects.map((p) => <ProjectCard {...p} />)}
+        </div>
+      </section>
+
+      <ContributionTimeline days={contributions.days as [string, number, number][]} years={contributions.years} />
+    </main>
+    <footer class="site-footer">
+      Updated from GitHub on {new Date(github.fetchedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+    </footer>
+  </body>
+</html>
+
+<style is:global>
+  :root {
+    --bg: #0d1117;
+    --surface: #10151c;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --border: #262c36;
+    --border-strong: #3d444d;
+    --hover: #1c2129;
+    --accent: #6cb6ff;
+    --accent-bg: #316dca;
+    --accent-fg: #ffffff;
+    --l0: #151b23;
+    --l1: #033a16;
+    --l2: #196c2e;
+    --l3: #2ea043;
+    --l4: #56d364;
+    --cell-edge: rgb(255 255 255 / 0.04);
+    --tip-bg: #3d444d;
+    --tip-fg: #ffffff;
+    color-scheme: dark;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #ffffff;
+      --surface: #ffffff;
+      --text: #1f2328;
+      --muted: #59636e;
+      --border: #d1d9e0;
+      --border-strong: #b0b9c3;
+      --hover: #f0f2f5;
+      --accent: #0969da;
+      --accent-bg: #0969da;
+      --accent-fg: #ffffff;
+      --l0: #eff2f5;
+      --l1: #aceebb;
+      --l2: #4ac26b;
+      --l3: #2da44e;
+      --l4: #116329;
+      --cell-edge: rgb(0 0 0 / 0.05);
+      --tip-bg: #25292e;
+      --tip-fg: #ffffff;
+      color-scheme: light;
+    }
+  }
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  a {
+    color: var(--accent);
+    text-underline-offset: 0.2em;
+  }
+  main {
+    display: flex;
+    flex-direction: column;
+    gap: 3rem;
+    max-width: 64rem;
+    margin: 0 auto;
+    padding: 4rem 1rem 2rem;
+  }
+  h2 {
+    margin: 0 0 0.75rem;
+    font-size: 1.125rem;
+    font-weight: 600;
+  }
+</style>
+
+<style>
+  .intro {
+    display: flex;
+    gap: 2rem;
+    align-items: flex-start;
+  }
+  .intro img {
+    flex: none;
+    width: 128px;
+    height: 128px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+  }
+  h1 {
+    margin: 0;
+    font-size: 2rem;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+  }
+  .headline {
+    margin: 0.25rem 0 1rem;
+    color: var(--muted);
+    font-size: 1.125rem;
+  }
+  .intro p:not(.headline) {
+    max-width: 60ch;
+    margin: 0 0 0.75rem;
+  }
+  .links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 1.25rem;
+    margin: 1rem 0 0;
+    padding: 0;
+    list-style: none;
+    font-size: 0.9rem;
+  }
+  .loc {
+    color: var(--muted);
+  }
+  .projects {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr));
+    gap: 1rem;
+  }
+  .site-footer {
+    padding: 2rem 1rem 3rem;
+    color: var(--muted);
+    font-size: 0.8rem;
+    text-align: center;
+  }
+  @media (max-width: 640px) {
+    main {
+      padding-top: 2.5rem;
+    }
+    .intro {
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+    .intro img {
+      width: 96px;
+      height: 96px;
+    }
+  }
+</style>

@@ -1,31 +1,15 @@
 {
-  "name": "devvratshukla.github.io",
-  "version": "0.1.0",
+  "name": "cypherkunp.github.io",
+  "version": "1.0.0",
   "private": true,
-  "homepage": "https://devvratshukla.github.io/",
+  "type": "module",
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject",
-    "predeploy": "npm build",
-    "deploy": "gh-pages -b master -d build"
+    "dev": "astro dev",
+    "fetch-data": "node scripts/fetch-github.mjs",
+    "build": "astro build",
+    "preview": "astro preview"
   },
   "dependencies": {
-    "bootstrap": "^4.3.1",
-    "font-awesome": "^4.7.0",
-    "gh-pages": "^2.0.1",
-    "react": "^16.8.6",
-    "react-dom": "^16.8.6",
-    "react-scripts": "^3.0.1"
-  },
-  "eslintConfig": {
-    "extends": "react-app"
-  },
-  "browserslist": [
-    ">0.2%",
-    "not dead",
-    "not ie <= 11",
-    "not op_mini all"
-  ]
+    "astro": "7.4.6"
+  }
 }

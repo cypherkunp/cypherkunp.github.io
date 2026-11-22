@@ -1,0 +1,348 @@
+---
+// One continuous contribution grid covering every year of GitHub activity.
+// It opens scrolled to today; the year list jumps back through the history.
+type Day = [date: string, count: number, level: number];
+
+interface Props {
+  days: Day[];
+  years: number[];
+}
+
+const { days, years } = Astro.props;
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const DAY_MS = 86_400_000;
+
+const byDate = new Map(days.map((d) => [d[0], d]));
+const first = new Date(`${days[0][0]}T00:00:00Z`);
+const last = new Date(`${days[days.length - 1][0]}T00:00:00Z`);
+const start = new Date(first.getTime() - first.getUTCDay() * DAY_MS); // back to Sunday
+
+type Cell = { date: string; count: number; level: number } | null;
+type Week = { cells: Cell[]; month?: string; year?: number };
+
+const weeks: Week[] = [];
+for (let t = start.getTime(); t <= last.getTime(); t += 7 * DAY_MS) {
+  const week: Week = { cells: [] };
+  for (let i = 0; i < 7; i++) {
+    const date = new Date(t + i * DAY_MS);
+    const iso = date.toISOString().slice(0, 10);
+    const entry = byDate.get(iso);
+    week.cells.push(date > last || !entry ? null : { date: iso, count: entry[1], level: entry[2] });
+    if (date.getUTCDate() === 1 && date <= last) {
+      week.month = MONTHS[date.getUTCMonth()];
+      if (date.getUTCMonth() === 0) week.year = date.getUTCFullYear();
+    }
+  }
+  weeks.push(week);
+}
+// The first year starts mid-week, so label its opening column too.
+weeks[0].year ??= first.getUTCFullYear();
+
+const totals = new Map<number, number>(years.map((y) => [y, 0]));
+for (const [date, count] of days) totals.set(+date.slice(0, 4), (totals.get(+date.slice(0, 4)) ?? 0) + count);
+const allTime = [...totals.values()].reduce((a, b) => a + b, 0);
+
+const yearAgo = new Date(last.getTime() - 365 * DAY_MS).toISOString().slice(0, 10);
+const lastYear = days.filter((d) => d[0] > yearAgo).reduce((sum, d) => sum + d[1], 0);
+const fmt = (n: number) => n.toLocaleString('en-GB');
+const newestFirst = [...years].sort((a, b) => b - a);
+---
+
+<section class="timeline" aria-labelledby="contrib-heading">
+  <header class="head">
+    <h2 id="contrib-heading">{fmt(lastYear)} contributions in the last year</h2>
+    <p class="sub">{fmt(allTime)} since {years[0]}</p>
+  </header>
+
+  <div class="frame">
+    <div class="days" aria-hidden="true">
+      <span></span><span>Mon</span><span></span><span>Wed</span><span></span><span>Fri</span><span></span>
+    </div>
+    <div class="scroller" tabindex="0" role="img" aria-label={`Contribution grid from ${years[0]} to ${years[years.length - 1]}. Scroll horizontally to move through time.`} data-scroller>
+      <div class="grid">
+        {weeks.map((w) => (
+          <div class:list={['week', { 'year-start': w.year }]} data-year={w.year}>
+            <span class="year-label">{w.year}</span>
+            <span class="month-label">{w.month}</span>
+            {w.cells.map((c) =>
+              c ? <i class={`l${c.level}`} data-d={c.date} data-c={c.count}></i> : <i class="empty"></i>,
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+    <nav class="years" aria-label="Jump to year">
+      {newestFirst.map((y, i) => (
+        <button type="button" data-jump={y} aria-current={i === 0 ? 'true' : undefined}>
+          <span>{y}</span>
+          <small>{fmt(totals.get(y) ?? 0)}</small>
+        </button>
+      ))}
+    </nav>
+  </div>
+
+  <footer class="legend" aria-hidden="true">
+    Less <i class="l0"></i><i class="l1"></i><i class="l2"></i><i class="l3"></i><i class="l4"></i> More
+  </footer>
+  <div class="tip" role="tooltip" hidden data-tip></div>
+</section>
+
+<script>
+  const scroller = document.querySelector<HTMLElement>('[data-scroller]')!;
+  const tip = document.querySelector<HTMLElement>('[data-tip]')!;
+  const buttons = [...document.querySelectorAll<HTMLButtonElement>('[data-jump]')];
+  const starts = [...scroller.querySelectorAll<HTMLElement>('.year-start')];
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+
+  // Open on the present.
+  scroller.scrollLeft = scroller.scrollWidth;
+
+  function setActive(year: string) {
+    for (const b of buttons) {
+      if (b.dataset.jump === year) b.setAttribute('aria-current', 'true');
+      else b.removeAttribute('aria-current');
+    }
+  }
+
+  // Highlight the year in the middle of the visible range.
+  let frame = 0;
+  scroller.addEventListener('scroll', () => {
+    cancelAnimationFrame(frame);
+    frame = requestAnimationFrame(() => {
+      const mid = scroller.scrollLeft + scroller.clientWidth / 2;
+      let current = starts[0];
+      for (const s of starts) if (s.offsetLeft <= mid) current = s;
+      // At either edge, prefer the year fully in view.
+      if (scroller.scrollLeft + scroller.clientWidth >= scroller.scrollWidth - 2) current = starts[starts.length - 1];
+      if (scroller.scrollLeft <= 2) current = starts[0];
+      setActive(current.dataset.year!);
+    });
+  });
+
+  for (const b of buttons) {
+    b.addEventListener('click', () => {
+      const target = starts.find((s) => s.dataset.year === b.dataset.jump);
+      if (!target) return;
+      scroller.scrollTo({ left: target.offsetLeft - 8, behavior: reduceMotion.matches ? 'auto' : 'smooth' });
+    });
+  }
+
+  const dateFmt = new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+  scroller.addEventListener('pointerover', (e) => {
+    const cell = (e.target as HTMLElement).closest<HTMLElement>('i[data-d]');
+    if (!cell) return void (tip.hidden = true);
+    const n = Number(cell.dataset.c);
+    const when = dateFmt.format(new Date(`${cell.dataset.d}T00:00:00Z`));
+    tip.textContent = `${n === 0 ? 'No' : n} contribution${n === 1 ? '' : 's'} on ${when}`;
+    tip.hidden = false;
+    const r = cell.getBoundingClientRect();
+    const t = tip.getBoundingClientRect();
+    const left = Math.min(Math.max(8, r.left + r.width / 2 - t.width / 2), innerWidth - t.width - 8);
+    tip.style.translate = `${left}px ${r.top - t.height - 8}px`;
+  });
+  scroller.addEventListener('pointerleave', () => (tip.hidden = true));
+  scroller.addEventListener('scroll', () => (tip.hidden = true), { passive: true });
+</script>
+
+<style is:global>
+.timeline {
+  & {
+    --cell: 11px;
+    --gap: 3px;
+  }
+  .head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.25rem 1rem;
+    margin-bottom: 0.75rem;
+  }
+  h2 {
+    margin: 0;
+    font-size: 1.125rem;
+    font-weight: 600;
+  }
+  .sub {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.875rem;
+  }
+  .frame {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 0 0.5rem;
+    padding: 1rem 0.75rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface);
+  }
+  .days {
+    display: grid;
+    grid-template-rows: repeat(7, var(--cell));
+    row-gap: var(--gap);
+    margin-top: calc(2rem + 2 * var(--gap));
+    color: var(--muted);
+    font-size: 0.7rem;
+    line-height: var(--cell);
+  }
+  .scroller {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+    padding-bottom: 0.5rem;
+    /* Fade the older end so it reads as continuing. */
+    mask-image: linear-gradient(to right, transparent, #000 2rem);
+  }
+  .scroller:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  .grid {
+    display: flex;
+    gap: var(--gap);
+    width: max-content;
+    padding-left: 2rem;
+  }
+  .week {
+    display: grid;
+    grid-template-rows: 1rem 1rem repeat(7, var(--cell));
+    row-gap: var(--gap);
+    width: var(--cell);
+  }
+  .week.year-start {
+    position: relative;
+  }
+  .week.year-start::before {
+    content: '';
+    position: absolute;
+    top: 0.15rem;
+    bottom: 0;
+    left: calc(var(--gap) / -2 - 0.5px);
+    border-left: 1px dashed var(--border-strong);
+  }
+  .year-label,
+  .month-label {
+    overflow: visible;
+    white-space: nowrap;
+    font-size: 0.7rem;
+    line-height: 1rem;
+    color: var(--muted);
+  }
+  .year-label {
+    padding-left: 4px;
+    color: var(--text);
+    font-weight: 600;
+  }
+  i {
+    display: block;
+    width: var(--cell);
+    height: var(--cell);
+    border-radius: 2px;
+    background: var(--l0);
+    outline: 1px solid var(--cell-edge);
+    outline-offset: -1px;
+  }
+  i.empty {
+    background: transparent;
+    outline: none;
+  }
+  .l1 { background: var(--l1); }
+  .l2 { background: var(--l2); }
+  .l3 { background: var(--l3); }
+  .l4 { background: var(--l4); }
+
+  .years {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    max-height: calc(2rem + 7 * var(--cell) + 8 * var(--gap) + 0.5rem);
+    overflow-y: auto;
+    scrollbar-width: none;
+    padding-left: 0.5rem;
+    border-left: 1px solid var(--border);
+  }
+  .years button {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.2rem 0.6rem;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--muted);
+    font: inherit;
+    font-size: 0.8rem;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 120ms ease-out, color 120ms ease-out;
+  }
+  .years button small {
+    font-size: 0.7rem;
+    font-variant-numeric: tabular-nums;
+    opacity: 0.8;
+  }
+  .years button:hover {
+    background: var(--hover);
+    color: var(--text);
+  }
+  .years button[aria-current] {
+    background: var(--accent-bg);
+    color: var(--accent-fg);
+  }
+  .years button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+  .legend {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 4px;
+    margin-top: 0.5rem;
+    color: var(--muted);
+    font-size: 0.75rem;
+  }
+  .legend i {
+    margin: 0 1px;
+  }
+  .tip {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 10;
+    padding: 0.35rem 0.6rem;
+    border-radius: 6px;
+    background: var(--tip-bg);
+    color: var(--tip-fg);
+    font-size: 0.75rem;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+
+  @media (max-width: 640px) {
+    .frame {
+      grid-template-columns: minmax(0, 1fr);
+      padding: 0.75rem 0.5rem;
+    }
+    .days {
+      display: none;
+    }
+    .years {
+      flex-direction: row;
+      max-height: none;
+      overflow-x: auto;
+      margin-top: 0.5rem;
+      padding: 0.5rem 0 0;
+      border-left: 0;
+      border-top: 1px solid var(--border);
+    }
+    .years button small {
+      display: none;
+    }
+  }
+}
+</style>
