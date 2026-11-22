@@ -8,6 +8,9 @@ const { profile, pinned, contributions } = github;
 const projects = pinned.map((p) => ({ ...p, ...projectOverrides[p.name] }));
 const name = profile.name ?? profile.login;
 const description = `${name}'s projects and GitHub contribution history.`;
+const title = `${name} · Projects`;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+const ogImage = new URL('/og.png', Astro.site);
 ---
 
 <!doctype html>
@@ -15,13 +18,27 @@ const description = `${name}'s projects and GitHub contribution history.`;
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{name} · Projects</title>
+    <title>{title}</title>
     <meta name="description" content={description} />
     <meta name="color-scheme" content="dark light" />
-    <link rel="icon" href="/favicon.ico" />
-    <meta property="og:title" content={`${name} · Projects`} />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content={name} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
-    <meta property="og:image" content={profile.avatarUrl} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content={`${name}: ${intro.headline}`} />
+    <meta name="twitter:card" content="summary_large_image" />
+    {profile.twitterUsername && <meta name="twitter:site" content={`@${profile.twitterUsername}`} />}
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
     <script is:inline>
       // Retire the old Create React App service worker for returning visitors.
       navigator.serviceWorker?.getRegistrations().then((regs) => regs.forEach((r) => r.unregister()));
