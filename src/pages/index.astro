@@ -8,7 +8,7 @@ const { profile, pinned, contributions } = github;
 const projects = pinned.map((p) => ({ ...p, ...projectOverrides[p.name] }));
 const name = profile.name ?? profile.login;
 const description = `${name}'s projects and GitHub contribution history.`;
-const title = `${name} · Projects`;
+const title = `${name} | Projects`;
 const canonical = new URL(Astro.url.pathname, Astro.site);
 const ogImage = new URL('/og.png', Astro.site);
 ---
